@@ -6,6 +6,30 @@ A permission-aware Salesforce Case bulk-action workbench. Users select records i
 
 > This is a dedicated Lightning App Page with its own selection. It is **not** a native LWC list-view or related-list action.
 
+## See it in action
+
+These real screenshots were captured in the connected Dev Hub Developer Edition org on October 11, 2026, using the repeatable `CAW Demo` records from the [demo guide](demo/README.md).
+
+![Case Action Workbench with two demo Cases selected from its own filtered table](docs/screenshots/workbench-selected.png)
+
+<details>
+<summary>Review the confirmation step</summary>
+
+The workbench names the requested change and shows how many Cases will be affected before it calls Apex.
+
+![Confirmation dialog showing a High priority action for two selected Cases](docs/screenshots/action-confirmation.png)
+
+</details>
+
+<details>
+<summary>Review per-record results</summary>
+
+The results panel reports each Case separately and reserves a second section for records that need attention.
+
+![Two successful Case updates listed by Case number, with no failures](docs/screenshots/action-results.png)
+
+</details>
+
 ## Why I built it
 
 Salesforce admins have asked for a native list or related-list button that can launch an LWC and pass the selected record IDs into it. The [IdeaExchange request](https://ideas.salesforce.com/s/idea/a0B8W00000QO2m8UAD/add-lwc-as-custom-button-for-related-list-and-list-view) describes that workflow; Salesforce's response says the enhancement is not on the product roadmap. The comments also make clear that a button which only navigates to an app page misses the key requirement: carrying the user's selected records into the component.
@@ -26,18 +50,55 @@ For a guided walkthrough and repeatable demo records, see [the demo guide](demo/
 
 ## How it is put together
 
-```text
-caseWorkbench
-  ├── caseWorkbenchFilters  → scope, status, and subject filters
-  ├── lightning-datatable   → cursor page and explicit selection
-  └── caseWorkbenchActions  → bulk action requests
+### Action workflow
 
-GraphQL wire (LDS/UI API) → Case rows
-caseWorkbenchActions → with-sharing Apex → user-mode query and partial DML
-                         └→ per-record outcomes → refresh GraphQL + notify LDS
+```mermaid
+flowchart TD
+    A["Open Cases in the workbench"] --> B["Filter and select up to 200 Cases<br/>across cursor pages"]
+    B --> C{"Choose an action"}
+    C -->|Set priority| D["Choose the target priority"]
+    C -->|Assign to Me| E["Use the current user as the target"]
+    D --> F{"Confirm the action<br/>and selected count?"}
+    E --> F
+    F -->|Cancel| B
+    F -->|Confirm| G["Check action permission and<br/>query selected Cases in user mode"]
+    G -->|Denied or inaccessible| H["Reject request; keep selection"]
+    G -->|Allowed| I["One partial-success<br/>bulk DML call in user mode"]
+    I --> J["Show an outcome for each Case"]
+    J -->|Success| K["Show success and remove<br/>the Case from selection"]
+    J -->|Failure| L["Show the reason and keep<br/>the Case selected for retry"]
+    K --> M["Notify LDS and refresh GraphQL<br/>for successful updates"]
+    L --> N["Review or retry failed Cases"]
 ```
 
-The parent owns filter, selection, pagination, confirmation, and result state. Child components expose user intent through custom events. Salesforce base components provide the table, filters, actions, and confirmation dialog.
+### Component and data flow
+
+The parent owns filters, cursor pagination, selection across pages, confirmation, and results. Child components expose user intent through custom events. Salesforce base components provide the table, filters, action controls, and confirmation dialog.
+
+```mermaid
+flowchart LR
+    subgraph LWC["Lightning page components"]
+        P["caseWorkbench<br/>parent state and orchestration"]
+        F["caseWorkbenchFilters"]
+        T["lightning-datatable"]
+        A["caseWorkbenchActions"]
+        F -->|filter event| P
+        T -->|row selection event| P
+        P -->|selected count and permissions| A
+        A -->|action event| P
+    end
+    G["Salesforce GraphQL wire<br/>UI API"] -->|visible Case rows| P
+    P -->|query and refresh| G
+    P -->|priority or assignment request| X["CaseActionWorkbenchController<br/>with sharing"]
+    X --> V["Custom permission check<br/>and request validation"]
+    V --> Q["One user-mode SOQL query<br/>for selected Cases"]
+    Q --> D["At most one partial-success<br/>user-mode bulk DML call"]
+    D --> R["Per-record outcomes<br/>in request order"]
+    R -->|successes cleared, failures retained| P
+    P -->|notifyRecordUpdateAvailable| LDS["Lightning Data Service"]
+```
+
+Each action is capped at 200 selected Cases. Apex returns outcomes in request order, so the UI can show a Case number, subject, and result for every selected record.
 
 ## Security and product boundaries
 
