@@ -1,0 +1,45 @@
+<template>
+  <div
+    class="slds-grid slds-wrap slds-grid_vertical-align-end slds-gutters_small slds-m-bottom_medium"
+  >
+    <template lwc:if={canSetPriority}>
+      <div
+        class="slds-col slds-size_1-of-1 slds-small-size_1-of-3 slds-medium-size_1-of-4"
+      >
+        <lightning-combobox
+          label="Set selected priority"
+          value={priority}
+          options={priorityOptions}
+          onchange={handlePriorityChange}
+          disabled={isActionDisabled}
+        ></lightning-combobox>
+      </div>
+      <div
+        class="slds-col slds-size_1-of-1 slds-small-size_1-of-3 slds-medium-size_1-of-4"
+      >
+        <lightning-button
+          label="Set Priority"
+          variant="brand"
+          onclick={handleSetPriority}
+          disabled={isActionDisabled}
+        ></lightning-button>
+      </div>
+    </template>
+    <template lwc:if={canAssignToMe}>
+      <div
+        class="slds-col slds-size_1-of-1 slds-small-size_1-of-3 slds-medium-size_1-of-4"
+      >
+        <lightning-button
+          label="Assign to Me"
+          onclick={handleAssignToMe}
+          disabled={isActionDisabled}
+        ></lightning-button>
+      </div>
+    </template>
+    <div
+      class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4 slds-text-body_small slds-p-bottom_x-small"
+    >
+      {selectionMessage}
+    </div>
+  </div>
+</template>

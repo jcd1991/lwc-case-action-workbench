@@ -1,0 +1,71 @@
+<template>
+  <lightning-card title="Case Action Workbench" icon-name="standard:case">
+    <div class="workbench slds-p-horizontal_medium slds-p-bottom_medium">
+      <c-case-workbench-filters
+        scope={scope}
+        status={status}
+        search-term={searchTerm}
+        onfilterchange={handleFilterChange}
+      ></c-case-workbench-filters>
+
+      <c-case-workbench-actions
+        selected-count={selectedCount}
+        is-busy={isBusy}
+        can-set-priority={canSetPriority}
+        can-assign-to-me={canAssignToMe}
+        onsetpriority={handleSetPriority}
+        onassigntome={handleAssignToMe}
+      ></c-case-workbench-actions>
+
+      <template lwc:if={isLoading}>
+        <lightning-spinner
+          alternative-text="Loading Cases"
+          size="small"
+        ></lightning-spinner>
+      </template>
+
+      <template lwc:if={loadError}>
+        <div class="slds-text-color_error slds-p-vertical_medium" role="alert">
+          {loadError}
+        </div>
+      </template>
+
+      <div class="table-wrap">
+        <lightning-datatable
+          key-field="Id"
+          data={rows}
+          columns={columns}
+          selected-rows={selectedRowIds}
+          errors={tableErrors}
+          max-row-selection="200"
+          onrowselection={handleRowSelection}
+          aria-label="Open Cases"
+        ></lightning-datatable>
+      </div>
+
+      <div
+        class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-top_small"
+      >
+        <p class="slds-text-body_small" aria-live="polite">
+          {pageSummary} · {selectedCount} selected (maximum 200)
+        </p>
+        <div
+          class="slds-button-group"
+          role="group"
+          aria-label="Case page navigation"
+        >
+          <lightning-button
+            label="Previous"
+            onclick={handlePrevious}
+            disabled={isPreviousDisabled}
+          ></lightning-button>
+          <lightning-button
+            label="Next"
+            onclick={handleNext}
+            disabled={isNextDisabled}
+          ></lightning-button>
+        </div>
+      </div>
+    </div>
+  </lightning-card>
+</template>
