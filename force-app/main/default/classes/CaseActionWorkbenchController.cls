@@ -121,11 +121,15 @@ public with sharing class CaseActionWorkbenchController {
         if (result.isSuccess()) {
           outcomes.add(new ActionOutcome(attemptedIds[index], true, null));
         } else {
+          List<String> messages = new List<String>();
+          for (Database.Error dmlError : result.getErrors()) {
+            messages.add(dmlError.getMessage());
+          }
           outcomes.add(
             new ActionOutcome(
               attemptedIds[index],
               false,
-              result.getErrors()[0].getMessage()
+              String.join(messages, ' ')
             )
           );
         }

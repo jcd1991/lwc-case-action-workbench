@@ -17,6 +17,85 @@
         onassigntome={handleAssignToMe}
       ></c-case-workbench-actions>
 
+      <template lwc:if={hasActionResults}>
+        <section
+          class="results slds-box slds-theme_default slds-m-bottom_medium"
+          aria-labelledby="results-heading"
+          data-testid="action-results"
+        >
+          <div
+            class="slds-grid slds-grid_align-spread slds-grid_vertical-align-start slds-m-bottom_small"
+          >
+            <div>
+              <h2
+                id="results-heading"
+                class="slds-text-heading_small slds-m-bottom_xx-small"
+              >
+                {resultsActionLabel} results
+              </h2>
+              <p class="slds-text-body_small" aria-live="polite" role="status">
+                {resultsSummary}
+              </p>
+            </div>
+            <lightning-button
+              label="Dismiss results"
+              variant="base"
+              onclick={clearActionResults}
+            ></lightning-button>
+          </div>
+
+          <div class="slds-grid slds-wrap slds-gutters">
+            <section
+              class="slds-col slds-size_1-of-1 slds-large-size_1-of-2"
+              aria-label="Successful Cases"
+            >
+              <h3 class="slds-text-title_bold slds-m-bottom_x-small">
+                Updated ({successCount})
+              </h3>
+              <template lwc:if={hasSuccessfulResults}>
+                <ul class="result-list result-list_success">
+                  <template for:each={successfulResults} for:item="result">
+                    <li key={result.recordId} class="result-item">
+                      <p class="result-record">
+                        <strong>{result.caseNumber}</strong> — {result.subject}
+                      </p>
+                      <p class="slds-text-body_small">{result.message}</p>
+                    </li>
+                  </template>
+                </ul>
+              </template>
+              <template lwc:else>
+                <p class="slds-text-body_small">No Cases were updated.</p>
+              </template>
+            </section>
+
+            <section
+              class="slds-col slds-size_1-of-1 slds-large-size_1-of-2"
+              aria-label="Cases that need attention"
+            >
+              <h3 class="slds-text-title_bold slds-m-bottom_x-small">
+                Needs attention ({failureCount})
+              </h3>
+              <template lwc:if={hasFailedResults}>
+                <ul class="result-list result-list_failure">
+                  <template for:each={failedResults} for:item="result">
+                    <li key={result.recordId} class="result-item">
+                      <p class="result-record">
+                        <strong>{result.caseNumber}</strong> — {result.subject}
+                      </p>
+                      <p class="slds-text-body_small">{result.message}</p>
+                    </li>
+                  </template>
+                </ul>
+              </template>
+              <template lwc:else>
+                <p class="slds-text-body_small">No Cases need attention.</p>
+              </template>
+            </section>
+          </div>
+        </section>
+      </template>
+
       <template lwc:if={isLoading}>
         <lightning-spinner
           alternative-text="Loading Cases"

@@ -36,10 +36,11 @@ private class CaseActionWorkbenchControllerTest {
 
     System.runAs(workbenchUser) {
       Case priorityCase = createCase('Workbench priority test');
+      Case secondPriorityCase = createCase('Workbench second priority test');
       Case ownerCase = createCase('Workbench owner test');
       Test.startTest();
       List<CaseActionWorkbenchController.ActionOutcome> priorityResults = CaseActionWorkbenchController.setPriority(
-        new List<Id>{ priorityCase.Id },
+        new List<Id>{ priorityCase.Id, secondPriorityCase.Id },
         'High'
       );
       List<CaseActionWorkbenchController.ActionOutcome> ownerResults = CaseActionWorkbenchController.assignToMe(
@@ -47,19 +48,69 @@ private class CaseActionWorkbenchControllerTest {
       );
       Test.stopTest();
 
+      System.assertEquals(2, priorityResults.size());
       System.assertEquals(true, priorityResults[0].success);
+      System.assertEquals(true, priorityResults[1].success);
       System.assertEquals(true, ownerResults[0].success);
       Map<Id, Case> savedCases = new Map<Id, Case>(
         [
           SELECT Id, Priority, OwnerId
           FROM Case
-          WHERE Id IN :new Set<Id>{ priorityCase.Id, ownerCase.Id }
+          WHERE
+            Id IN :new Set<Id>{
+              priorityCase.Id,
+              secondPriorityCase.Id,
+              ownerCase.Id
+            }
         ]
       );
       System.assertEquals('High', savedCases.get(priorityCase.Id).Priority);
       System.assertEquals(
+        'High',
+        savedCases.get(secondPriorityCase.Id).Priority
+      );
+      System.assertEquals(
         workbenchUser.Id,
         savedCases.get(ownerCase.Id).OwnerId
+      );
+    }
+  }
+
+  @IsTest
+  static void returnsMixedOutcomesForAvailableAndUnavailableCases() {
+    User workbenchUser = createUser();
+    PermissionSet workbenchAccess = [
+      SELECT Id
+      FROM PermissionSet
+      WHERE Name = 'Case_Workbench_User'
+      LIMIT 1
+    ];
+    insert new PermissionSetAssignment(
+      AssigneeId = workbenchUser.Id,
+      PermissionSetId = workbenchAccess.Id
+    );
+
+    System.runAs(workbenchUser) {
+      Case availableCase = createCase('Workbench mixed result success');
+      Id unavailableCaseId = '500000000000001';
+
+      Test.startTest();
+      List<CaseActionWorkbenchController.ActionOutcome> outcomes = CaseActionWorkbenchController.setPriority(
+        new List<Id>{ availableCase.Id, unavailableCaseId },
+        'High'
+      );
+      Test.stopTest();
+
+      Map<Id, CaseActionWorkbenchController.ActionOutcome> byRecordId = new Map<Id, CaseActionWorkbenchController.ActionOutcome>();
+      for (CaseActionWorkbenchController.ActionOutcome outcome : outcomes) {
+        byRecordId.put(outcome.recordId, outcome);
+      }
+      System.assertEquals(2, outcomes.size());
+      System.assertEquals(true, byRecordId.get(availableCase.Id).success);
+      System.assertEquals(false, byRecordId.get(unavailableCaseId).success);
+      System.assertEquals(
+        'Case is unavailable or you do not have access.',
+        byRecordId.get(unavailableCaseId).message
       );
     }
   }

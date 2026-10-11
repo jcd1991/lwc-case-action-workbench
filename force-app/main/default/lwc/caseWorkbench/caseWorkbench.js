@@ -1,5 +1,6 @@
 import { LightningElement, wire } from "lwc";
 import { gql, graphql } from "lightning/graphql";
+import LightningConfirm from "lightning/confirm";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { notifyRecordUpdateAvailable } from "lightning/uiRecordApi";
 import setPriority from "@salesforce/apex/CaseActionWorkbenchController.setPriority";
@@ -68,6 +69,8 @@ export default class CaseWorkbench extends LightningElement {
   afterCursor = null;
   cursorStack = [];
   selectedRowsById = new Map();
+  actionResults = [];
+  resultsActionLabel = "";
   tableErrors;
   loadError;
   isLoading = true;
@@ -122,6 +125,48 @@ export default class CaseWorkbench extends LightningElement {
 
   get selectedCount() {
     return this.selectedRowsById.size;
+  }
+
+  get successfulResults() {
+    return this.actionResults.filter((result) => result.success);
+  }
+
+  get failedResults() {
+    return this.actionResults.filter((result) => !result.success);
+  }
+
+  get successCount() {
+    return this.successfulResults.length;
+  }
+
+  get failureCount() {
+    return this.failedResults.length;
+  }
+
+  get hasActionResults() {
+    return this.actionResults.length > 0;
+  }
+
+  get hasSuccessfulResults() {
+    return this.successCount > 0;
+  }
+
+  get hasFailedResults() {
+    return this.failureCount > 0;
+  }
+
+  get resultsSummary() {
+    const updated =
+      this.successCount === 1
+        ? "1 Case updated"
+        : `${this.successCount} Cases updated`;
+    const failed =
+      this.failureCount === 1
+        ? "1 Case failed"
+        : `${this.failureCount} Cases failed`;
+    return this.failureCount
+      ? `${updated}; ${failed}. Failed Cases remain selected so you can retry them.`
+      : `${updated} successfully.`;
   }
 
   get selectedRowIds() {
@@ -190,33 +235,76 @@ export default class CaseWorkbench extends LightningElement {
   }
 
   async handleSetPriority(event) {
-    await this.runAction(() =>
-      setPriority({
-        caseIds: [...this.selectedRowsById.keys()],
-        priority: event.detail.priority
-      })
-    );
+    await this.confirmAndRunAction({
+      type: "priority",
+      priority: event.detail.priority
+    });
   }
 
   async handleAssignToMe() {
-    await this.runAction(() =>
-      assignToMe({ caseIds: [...this.selectedRowsById.keys()] })
-    );
+    await this.confirmAndRunAction({ type: "assign-to-me" });
   }
 
-  async runAction(action) {
+  async confirmAndRunAction(actionRequest) {
     if (this.selectedCount === 0 || this.isBusy) {
       return;
     }
     this.isBusy = true;
     try {
-      const outcomes = await action();
+      const caseIds = [...this.selectedRowsById.keys()];
+      const message =
+        actionRequest.type === "priority"
+          ? `Set priority to ${actionRequest.priority} for ${caseIds.length} selected Cases?`
+          : `Assign ${caseIds.length} selected Cases to you?`;
+      const confirmed = await LightningConfirm.open({
+        label: "Confirm Case action",
+        message,
+        theme: "warning"
+      });
+      if (!confirmed) {
+        return;
+      }
+      this.actionResults = [];
+      this.resultsActionLabel = "";
+      this.tableErrors = undefined;
+      await this.runAction(actionRequest, caseIds);
+    } catch (error) {
+      this.showToast(
+        "Action could not be confirmed",
+        this.errorMessage(error),
+        "error"
+      );
+    } finally {
+      this.isBusy = false;
+    }
+  }
+
+  async runAction(actionRequest, caseIds) {
+    try {
+      const selectedRows = new Map(this.selectedRowsById);
+      const outcomes =
+        actionRequest.type === "priority"
+          ? await setPriority({ caseIds, priority: actionRequest.priority })
+          : await assignToMe({ caseIds });
       const nextSelection = new Map(this.selectedRowsById);
       const rowErrors = {};
       const updatedIds = [];
+      const actionResults = [];
       let failures = 0;
 
       outcomes.forEach((outcome) => {
+        const selectedRow = selectedRows.get(outcome.recordId);
+        const message = outcome.success
+          ? "Updated successfully."
+          : outcome.message || "The Case could not be updated.";
+        actionResults.push({
+          recordId: outcome.recordId,
+          caseNumber: selectedRow?.CaseNumber || String(outcome.recordId),
+          subject: selectedRow?.Subject || "Case details unavailable",
+          success: outcome.success,
+          message
+        });
+
         if (outcome.success) {
           nextSelection.delete(outcome.recordId);
           updatedIds.push(outcome.recordId);
@@ -224,7 +312,7 @@ export default class CaseWorkbench extends LightningElement {
           failures += 1;
           rowErrors[outcome.recordId] = {
             title: "Action failed",
-            messages: [outcome.message || "The Case could not be updated."]
+            messages: [message]
           };
         }
       });
@@ -252,6 +340,11 @@ export default class CaseWorkbench extends LightningElement {
       if (refreshError) {
         message += ` Refresh the page if the rows look out of date (${refreshError}).`;
       }
+      this.actionResults = actionResults;
+      this.resultsActionLabel =
+        actionRequest.type === "priority"
+          ? `Set Priority to ${actionRequest.priority}`
+          : "Assign to Me";
       this.showToast(
         failures || refreshError ? "Action needs attention" : "Action complete",
         message,
@@ -259,9 +352,12 @@ export default class CaseWorkbench extends LightningElement {
       );
     } catch (error) {
       this.showToast("Action failed", this.errorMessage(error), "error");
-    } finally {
-      this.isBusy = false;
     }
+  }
+
+  clearActionResults() {
+    this.actionResults = [];
+    this.resultsActionLabel = "";
   }
 
   resetPaginationAndSelection() {
