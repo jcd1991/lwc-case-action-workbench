@@ -5,6 +5,7 @@
         scope={scope}
         status={status}
         search-term={searchTerm}
+        disabled={isBusy}
         onfilterchange={handleFilterChange}
       ></c-case-workbench-filters>
 
@@ -115,6 +116,7 @@
           data={rows}
           columns={columns}
           selected-rows={selectedRowIds}
+          disabled-rows={disabledRowIds}
           errors={tableErrors}
           max-row-selection="200"
           onrowselection={handleRowSelection}

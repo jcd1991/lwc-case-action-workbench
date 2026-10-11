@@ -15,6 +15,7 @@ export default class CaseWorkbenchFilters extends LightningElement {
   _scope = "all";
   _status = "all";
   _searchTerm = "";
+  @api disabled = false;
 
   @api
   get scope() {

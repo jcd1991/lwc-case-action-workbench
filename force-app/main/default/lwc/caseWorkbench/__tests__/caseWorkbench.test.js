@@ -151,6 +151,51 @@ describe("c-case-workbench", () => {
     expect(element.shadowRoot.textContent).toContain("1 selected");
   });
 
+  it("locks filters and visible row selection while confirmation is pending", async () => {
+    const element = createElement("c-case-workbench", {
+      is: CaseWorkbench
+    });
+    document.body.appendChild(element);
+
+    const selectedCase = makeCase("500000000000006", "00001006", "Pending");
+    emitPage([selectedCase]);
+    await flushPromises();
+    selectRows(element, [selectedCase]);
+
+    let resolveConfirmation;
+    LightningConfirm.open.mockReturnValue(
+      new Promise((resolve) => {
+        resolveConfirmation = resolve;
+      })
+    );
+    requestAction(element, "assigntome");
+    await flushPromises();
+
+    const filters = element.shadowRoot.querySelector(
+      "c-case-workbench-filters"
+    );
+    const datatable = element.shadowRoot.querySelector("lightning-datatable");
+    expect(filters.disabled).toBe(true);
+    expect(datatable.disabledRows).toEqual([selectedCase.Id]);
+
+    filters.dispatchEvent(
+      new CustomEvent("filterchange", {
+        detail: { scope: "mine", status: "all", searchTerm: "changed" }
+      })
+    );
+    selectRows(element, []);
+    await flushPromises();
+
+    expect(filters.scope).toBe("all");
+    expect(filters.searchTerm).toBe("");
+    expect(element.shadowRoot.textContent).toContain("1 selected");
+    expect(datatable.selectedRows).toEqual([selectedCase.Id]);
+
+    resolveConfirmation(false);
+    await flushPromises();
+    expect(assignToMe).not.toHaveBeenCalled();
+  });
+
   it("shows mixed per-record results and leaves failures selected", async () => {
     const element = createElement("c-case-workbench", {
       is: CaseWorkbench

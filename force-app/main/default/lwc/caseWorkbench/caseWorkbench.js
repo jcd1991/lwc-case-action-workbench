@@ -175,6 +175,10 @@ export default class CaseWorkbench extends LightningElement {
       .map((row) => row.Id);
   }
 
+  get disabledRowIds() {
+    return this.isBusy ? this.rows.map((row) => row.Id) : [];
+  }
+
   get pageSummary() {
     const count = this.rows.length;
     return count === 0
@@ -191,6 +195,9 @@ export default class CaseWorkbench extends LightningElement {
   }
 
   handleFilterChange(event) {
+    if (this.isBusy) {
+      return;
+    }
     const { scope, status, searchTerm } = event.detail;
     this.scope = scope;
     this.status = status;
@@ -199,6 +206,9 @@ export default class CaseWorkbench extends LightningElement {
   }
 
   handleRowSelection(event) {
+    if (this.isBusy) {
+      return;
+    }
     const nextSelection = new Map(this.selectedRowsById);
     this.rows.forEach((row) => nextSelection.delete(row.Id));
 

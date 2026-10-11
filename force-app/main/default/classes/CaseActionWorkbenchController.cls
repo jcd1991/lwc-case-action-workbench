@@ -81,7 +81,19 @@ public with sharing class CaseActionWorkbenchController {
       );
     }
 
-    Set<Id> requestedIds = new Set<Id>(caseIds);
+    Set<Id> requestedIds = new Set<Id>();
+    List<Id> orderedIds = new List<Id>();
+    for (Id recordId : caseIds) {
+      if (recordId == null) {
+        throw new AuraHandledException(
+          'Each selected Case must have a valid record ID.'
+        );
+      }
+      if (requestedIds.add(recordId)) {
+        orderedIds.add(recordId);
+      }
+    }
+
     Map<Id, Case> visibleCases = new Map<Id, Case>(
       [
         SELECT Id
@@ -93,7 +105,7 @@ public with sharing class CaseActionWorkbenchController {
 
     List<Case> changes = new List<Case>();
     List<Id> attemptedIds = new List<Id>();
-    for (Id recordId : requestedIds) {
+    for (Id recordId : orderedIds) {
       if (!visibleCases.containsKey(recordId)) {
         outcomes.add(
           new ActionOutcome(

@@ -5,6 +5,7 @@
         label="Case owner"
         value={scope}
         options={scopeOptions}
+        disabled={disabled}
         onchange={handleScopeChange}
       ></lightning-combobox>
     </div>
@@ -13,6 +14,7 @@
         label="Open status"
         value={status}
         options={statusOptions}
+        disabled={disabled}
         onchange={handleStatusChange}
       ></lightning-combobox>
     </div>
@@ -21,6 +23,7 @@
         type="search"
         label="Search subject"
         value={searchTerm}
+        disabled={disabled}
         onchange={handleSearchChange}
         onkeyup={handleSearchKeyup}
       ></lightning-input>

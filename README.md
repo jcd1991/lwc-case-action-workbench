@@ -41,11 +41,13 @@ The parent owns filter, selection, pagination, confirmation, and result state. C
 
 ## Security and product boundaries
 
-`CaseActionWorkbenchController` runs `with sharing`. It checks `Can_Bulk_Set_Case_Priority` or `Can_Assign_Cases_To_Self` on every request, re-queries Cases in user mode, validates the priority, enforces the 200-record limit, and performs partial-success DML in user mode. The UI hides actions when the user lacks the custom permission, but the Apex check is the authorization boundary.
+`CaseActionWorkbenchController` runs `with sharing`. It checks `Can_Bulk_Set_Case_Priority` or `Can_Assign_Cases_To_Self` on every request, re-queries Cases in user mode, validates the priority, enforces the 200-record limit, and performs partial-success DML in user mode. Each request uses one user-mode query and at most one bulk DML call, with no per-record SOQL or DML. The controller preserves request order in its per-record results. The UI hides actions when the user lacks the custom permission, but the Apex check is the authorization boundary.
 
 Assign the `Case_Workbench_User` permission set to each intended user. Their profile, Case object and field permissions, and sharing access still govern the records they can view and update.
 
 This app does not add an LWC to standard list-view buttons or related-list buttons, and does not accept selected IDs from those surfaces. Its selection exists only in the workbench table. The initial status options are New, Working, and Escalated; adapt them if an org uses a different Case status configuration.
+
+The workbench owns no Case trigger; updates still run through the org's normal Case automation. The [Trigger Actions Framework](https://github.com/mitchspano/trigger-actions-framework) coordinates the order, partitioning, and bypass behavior of record-triggered Apex and Flow actions. It complements this UI-facing controller if an org needs that automation coordination; it does not replace the workbench's request authorization or selection flow.
 
 ## Try it in a Salesforce org
 
@@ -73,7 +75,7 @@ Deploy changes with `sf project deploy start --target-org YOUR_ORG_ALIAS` after 
 
 ## Verification
 
-Verified October 11, 2026: all 7 LWC Jest tests passed across 3 suites, ESLint and Prettier passed, and all 4 Apex controller tests passed with 88% controller coverage. In the Developer Edition org, the browser flow confirmed a two-Case priority update and a one-Case assignment, including the confirmation step and per-record result panels. A SOQL readback showed both priority Cases at High and the assignment Case owned by the signed-in user. See the [demo guide](demo/README.md) for setup, steps, and the verification record.
+Verified October 11, 2026: all 8 LWC Jest tests passed across 3 suites, ESLint and Prettier passed, and all 4 Apex controller tests passed with 88% controller coverage. In the Developer Edition org, the browser flow confirmed a two-Case priority update and a one-Case assignment, including the confirmation step and per-record result panels. A SOQL readback showed both priority Cases at High and the assignment Case owned by the signed-in user. See the [demo guide](demo/README.md) for setup, steps, and the verification record.
 
 ## References
 

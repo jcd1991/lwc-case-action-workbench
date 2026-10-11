@@ -38,17 +38,47 @@ private class CaseActionWorkbenchControllerTest {
       Case priorityCase = createCase('Workbench priority test');
       Case secondPriorityCase = createCase('Workbench second priority test');
       Case ownerCase = createCase('Workbench owner test');
+      List<Id> priorityIds = new List<Id>{
+        secondPriorityCase.Id,
+        priorityCase.Id
+      };
       Test.startTest();
+      Integer queriesBeforePriority = Limits.getQueries();
+      Integer dmlBeforePriority = Limits.getDmlStatements();
       List<CaseActionWorkbenchController.ActionOutcome> priorityResults = CaseActionWorkbenchController.setPriority(
-        new List<Id>{ priorityCase.Id, secondPriorityCase.Id },
+        priorityIds,
         'High'
       );
+      System.assertEquals(
+        queriesBeforePriority + 1,
+        Limits.getQueries(),
+        'A multi-Case priority action should use one query.'
+      );
+      System.assertEquals(
+        dmlBeforePriority + 1,
+        Limits.getDmlStatements(),
+        'A multi-Case priority action should use one DML statement.'
+      );
+      Integer queriesBeforeAssignment = Limits.getQueries();
+      Integer dmlBeforeAssignment = Limits.getDmlStatements();
       List<CaseActionWorkbenchController.ActionOutcome> ownerResults = CaseActionWorkbenchController.assignToMe(
         new List<Id>{ ownerCase.Id }
+      );
+      System.assertEquals(
+        queriesBeforeAssignment + 1,
+        Limits.getQueries(),
+        'An assignment action should use one query.'
+      );
+      System.assertEquals(
+        dmlBeforeAssignment + 1,
+        Limits.getDmlStatements(),
+        'An assignment action should use one DML statement.'
       );
       Test.stopTest();
 
       System.assertEquals(2, priorityResults.size());
+      System.assertEquals(secondPriorityCase.Id, priorityResults[0].recordId);
+      System.assertEquals(priorityCase.Id, priorityResults[1].recordId);
       System.assertEquals(true, priorityResults[0].success);
       System.assertEquals(true, priorityResults[1].success);
       System.assertEquals(true, ownerResults[0].success);
@@ -131,6 +161,13 @@ private class CaseActionWorkbenchControllerTest {
 
     System.runAs(workbenchUser) {
       Case sampleCase = createCase('Workbench validation test');
+      try {
+        CaseActionWorkbenchController.assignToMe(new List<Id>{ null });
+        System.assert(false, 'A null record ID must be rejected.');
+      } catch (AuraHandledException expected) {
+        System.assertNotEquals(null, expected);
+      }
+
       try {
         CaseActionWorkbenchController.setPriority(
           new List<Id>{ sampleCase.Id },

@@ -27,7 +27,7 @@ Assign `Case_Workbench_User` to the signed-in user, open the **Case Action Workb
 
 Verified October 11, 2026. Update this record when the demo is rerun; automated coverage and the browser path are listed separately.
 
-- Local LWC Jest: 7 tests passed across 3 suites.
+- Local LWC Jest: 8 tests passed across 3 suites.
 - ESLint and Prettier: passed.
 - Apex `CaseActionWorkbenchControllerTest`: 4 tests passed; controller coverage 88%.
 - Developer Edition browser flow: confirmed the two selected priority Cases, saw the confirmation with the selected count, and verified two per-record successes. Confirmed the assignment flow for one Case and saw its per-record success result.
